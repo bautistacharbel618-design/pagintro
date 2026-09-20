@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Juego Canvas Mejorado</title>
+  <center>
+
+    <h3><a href="index.html">REGRESAR</a></h3>
+  </center>
+   
+
+  
+  <style>
+
+    
+    body {
+      margin: 0;
+      background: #0f0f13;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    canvas {
+      background: #1a1a24;
+      border: 2px solid #333;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 170, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="game" width="600" height="400"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let jugador = { x: 275, y: 350, width: 60, height: 15, velocidad: 7 };
+let estrella = { x: 300, y: 0, size: 12, velocidadBase: 3, velocidadActual: 3 };
+
+let puntos = 0;
+let vidas = 3;
+let juegoTerminado = false;
+const teclas = {};
+
+// Detectar teclas
+document.addEventListener("keydown", e => {
+  teclas[e.key] = true;
+  // Reiniciar juego si se presiona Enter y el juego terminó
+  if (e.key === "Enter" && juegoTerminado) {
+    reiniciarJuego();
+  }
+});
+
+document.addEventListener("keyup", e => {
+  teclas[e.key] = false;
+});
+
+function actualizar() {
+  if (juegoTerminado) return;
+
+  // Movimiento del jugador
+  if (teclas["ArrowLeft"] && jugador.x > 0) {
+    jugador.x -= jugador.velocidad;
+  }
+  if (teclas["ArrowRight"] && jugador.x + jugador.width < canvas.width) {
+    jugador.x += jugador.velocidad;
+  }
+
+  // Caída de la estrella (la velocidad aumenta con los puntos)
+  estrella.velocidadActual = estrella.velocidadBase + (puntos * 0.2);
+  estrella.y += estrella.velocidadActual;
+
+  // Colisión (mejorada para el centro de la estrella)
+  if (
+    estrella.y + estrella.size >= jugador.y &&
+    estrella.y - estrella.size <= jugador.y + jugador.height &&
+    estrella.x + estrella.size >= jugador.x &&
+    estrella.x - estrella.size <= jugador.x + jugador.width
+  ) {
+    puntos++;
+    reiniciarEstrella();
+  }
+
+  // Si la estrella llega al suelo (se pierde una vida)
+  if (estrella.y - estrella.size > canvas.height) {
+    vidas--;
+    if (vidas <= 0) {
+      juegoTerminado = true;
+    } else {
+      reiniciarEstrella();
+    }
+  }
+}
+
+function reiniciarEstrella() {
+  estrella.x = Math.random() * (canvas.width - estrella.size * 2) + estrella.size;
+  estrella.y = -estrella.size;
+}
+
+function reiniciarJuego() {
+  puntos = 0;
+  vidas = 3;
+  juegoTerminado = false;
+  jugador.x = (canvas.width - jugador.width) / 2;
+  reiniciarEstrella();
+  juego(); 
+}
+
+// Función para dibujar una estrella de 5 puntas
+function dibujarEstrellaShape(cx, cy, puntas, radioExt, radioInt) {
+  let rot = Math.PI / 2 * 3;
+  let x = cx;
+  let y = cy;
+  let step = Math.PI / puntas;
+
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - radioExt);
+  for (let i = 0; i < puntas; i++) {
+    x = cx + Math.cos(rot) * radioExt;
+    y = cy + Math.sin(rot) * radioExt;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * radioInt;
+    y = cy + Math.sin(rot) * radioInt;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+  ctx.lineTo(cx, cy - radioExt);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function dibujar() {
+  // Fondo
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (juegoTerminado) {
+    ctx.fillStyle = "white";
+    ctx.font = "bold 40px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+    
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#aaa";
+    ctx.fillText("Puntos finales: " + puntos, canvas.width / 2, canvas.height / 2 + 20);
+    ctx.fillText("Presiona ENTER para reiniciar", canvas.width / 2, canvas.height / 2 + 60);
+    ctx.textAlign = "left"; // Restaurar alineación
+    return;
+  }
+
+  // Dibujar Jugador (con efecto neón)
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = "#00aaff";
+  ctx.fillStyle = "#00aaff";
+  ctx.beginPath();
+  ctx.roundRect(jugador.x, jugador.y, jugador.width, jugador.height, 5);
+  ctx.fill();
+
+  // Dibujar Estrella (con efecto neón)
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "#ffdd00";
+  ctx.fillStyle = "#ffdd00";
+  dibujarEstrellaShape(estrella.x, estrella.y, 5, estrella.size, estrella.size / 2);
+
+  // Apagar sombras para el texto
+  ctx.shadowBlur = 0;
+
+  // Interfaz (Puntuación y Vidas)
+  ctx.fillStyle = "white";
+  ctx.font = "bold 20px Arial";
+  ctx.fillText("Puntos: " + puntos, 20, 30);
+  
+  ctx.fillStyle = "#ff4444";
+  ctx.fillText("Vidas: " + "❤".repeat(vidas), canvas.width - 120, 30);
+}
+
+function juego() {
+  actualizar();
+  dibujar();
+  if (!juegoTerminado) {
+    requestAnimationFrame(juego);
+  }
+}
+
+// Iniciar
+reiniciarEstrella();
+juego();
+</script>
+
+</body>
+</html>
